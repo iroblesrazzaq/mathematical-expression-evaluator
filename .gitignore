@@ -3,3 +3,13 @@ handwritten-digits-and-operators/
 __pychache__/
 
 handwritten-series/
+
+better_dataset/
+
+combined_img/
+
+handwritten_series/
+
+mnist_models/
+
+*.csv

@@ -13,3 +13,5 @@ handwritten_series/
 mnist_models/
 
 *.csv
+
+*.png

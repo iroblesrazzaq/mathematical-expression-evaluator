@@ -1,4 +1,4 @@
-# %%
+
 # Import necessary libraries
 import torch
 import torch.nn as nn
@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
 
 
 class CNN(nn.Module):
@@ -37,4 +36,3 @@ class CNN(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         return x
-

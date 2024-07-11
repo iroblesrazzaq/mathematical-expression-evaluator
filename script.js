@@ -60,18 +60,28 @@ function clearCanvas() {
     resultP.textContent = '';
 }
 
-function evaluateExpression() {
-    // Here you would typically send the canvas image to your server for processing
-    // For now, we'll just display a placeholder message
-    resultP.textContent = 'Evaluation functionality not implemented yet.';
+async function evaluateExpression() {
+    const imageData = canvas.toDataURL('image/png');
     
-    // When your model is ready, you can implement the actual evaluation logic here
-    // This might involve:
-    // 1. Converting the canvas to an image (e.g., using canvas.toDataURL())
-    // 2. Sending the image to your server (e.g., using fetch())
-    // 3. Processing the image on the server with your ML model
-    // 4. Sending the result back to the client
-    // 5. Displaying the result in the resultP element
+    try {
+        const response = await fetch('http://localhost:5000/evaluate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageData }),
+        });
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        const result = await response.json();
+        resultP.textContent = `Expression: ${result.expression}, Result: ${result.result}`;
+    } catch (error) {
+        console.error('Error:', error);
+        resultP.textContent = 'An error occurred during evaluation.';
+    }
 }
 
 // Set initial canvas style

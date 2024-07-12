@@ -1,45 +1,63 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import base64
-import io
-from PIL import Image
-import numpy as np
-import cv2
-import torch
-from model_scripts.cnn_class import CNN  # Import your CNN class
-from model_scripts.segmentaion_model_2 import process_and_segment_image, 
+import logging
+from model_scripts.seg_model_2_py import process_and_segment_image, predict_elements, load_model, predictions_to_string, parse_expression, evaluate_expression
 
 app = Flask(__name__)
-CORS(app)  # This allows your frontend to make requests to this server
+CORS(app, resources={r"/evaluate": {"origins": "http://127.0.0.1:5500"}}, allow_headers=["Content-Type"], supports_credentials=True)
 
-# Load your model
-model = CNN(num_classes=19)  # Adjust num_classes if needed
-model.load_state_dict(torch.load("./model_scripts/normalized_model.pth"))
-model.eval()
+logging.basicConfig(level=logging.DEBUG)
 
-@app.route('/evaluate', methods=['POST'])
+model = load_model()  # Load your model here
+symbols_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'add', 'dec', 'div', 'eq', 'mul', 'sub', 'x', 'y', 'z']
+
+@app.route('/evaluate', methods=['POST', 'OPTIONS'])
 def evaluate():
-    # Get the image data from the request
-    image_data = request.json['image']
+    if request.method == 'OPTIONS':
+        # Handling preflight request
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Origin'] = 'http://127.0.0.1:5500'
+        response.headers['Access-Control-Allow-Methods'] = 'POST'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    app.logger.info(f"Received request: {request.method}")
+    app.logger.info(f"Headers: {request.headers}")
     
-    # Process the image
-    processed_image, bounding_boxes = process_and_segment_image(image_data)
-    
-    # Make predictions
-    predictions = predict_elements(processed_image, bounding_boxes, model)
-    
-    # Convert predictions to a string representation
-    expression_string = predictions_to_string(predictions, symbols_list)
-    
-    # Parse and evaluate the expression
-    parsed_expression = parse_expression(expression_string)
-    result = evaluate_expression(parsed_expression)
-    
-    # Return the results
-    return jsonify({
-        'expression': expression_string,
-        'result': str(result)
-    })
+    try:
+        # Get the image data from the request
+        image_data = request.json['image']
+        app.logger.info("Received image data")
+        
+        # Process the image
+        processed_image, bounding_boxes = process_and_segment_image(image_data)
+        app.logger.info(f"Processed image shape: {processed_image.shape}")
+        app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
+        app.logger.info(f"Bounding boxes: {bounding_boxes}")
+        
+        # Make predictions
+        predictions = predict_elements(processed_image, bounding_boxes, model)
+        app.logger.info(f"Predictions: {predictions}")
+        
+        # Convert predictions to a string representation
+        expression_string = predictions_to_string(predictions, symbols_list)
+        app.logger.info(f"Expression string: {expression_string}")
+
+        # Parse and evaluate the expression
+        parsed_expression = parse_expression(expression_string)
+        app.logger.info(f"Parsed expression: {parsed_expression}")
+        result = evaluate_expression(parsed_expression)
+        app.logger.info(f"Evaluation result: {result}")
+        
+        # Return the results
+        return jsonify({
+            'expression': expression_string,
+            'result': str(result)
+        })
+    except Exception as e:
+        app.logger.error(f"Error in evaluate: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=True)

@@ -56,31 +56,58 @@ function stopDrawing() {
 }
 
 function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     resultP.textContent = '';
 }
 
 async function evaluateExpression() {
+    // Create a temporary canvas with white background
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.fillStyle = 'white';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    tempCtx.drawImage(canvas, 0, 0);
+
     const imageData = canvas.toDataURL('image/png');
     
+    // Check if the canvas is empty
+    const context = canvas.getContext('2d');
+    const blank = document.createElement('canvas');
+    blank.width = canvas.width;
+    blank.height = canvas.height;
+    
+    if (canvas.toDataURL() === blank.toDataURL()) {
+        resultP.textContent = 'Please draw something before evaluating.';
+        return;
+    }
+    
     try {
-        const response = await fetch('http://localhost:5000/evaluate', {
+        console.log('Sending request to server...');
+        const response = await fetch('http://127.0.0.1:5000/evaluate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ image: imageData }),
+            credentials: 'include',
+            mode: 'cors'
         });
         
+        console.log('Response received:', response);
+        
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
+        console.log('Result:', result);
         resultP.textContent = `Expression: ${result.expression}, Result: ${result.result}`;
     } catch (error) {
         console.error('Error:', error);
-        resultP.textContent = 'An error occurred during evaluation.';
+        resultP.textContent = 'An error occurred during evaluation: ' + error.message;
     }
 }
 
@@ -88,3 +115,5 @@ async function evaluateExpression() {
 ctx.lineWidth = 10;
 ctx.lineCap = 'round';
 ctx.strokeStyle = 'black';
+
+clearCanvas();

@@ -18,9 +18,7 @@ import base64
 import io
 import logging
 
-
-
-def process_and_segment_image(image_data, target_size=200, min_ratio=0.001, max_ratio=0.9, padding=10):
+def process_image(image_data, target_size=200):
     # Decode the base64 image
     image_data = image_data.split(',')[1]  # Remove the "data:image/png;base64," part
     image = Image.open(io.BytesIO(base64.b64decode(image_data)))
@@ -44,11 +42,14 @@ def process_and_segment_image(image_data, target_size=200, min_ratio=0.001, max_
     
     # Resize to target size while maintaining aspect ratio
     image_np = cv2.resize(image_np, (target_size, target_size), interpolation=cv2.INTER_AREA)
-    
     # Save the resized image
     # cv2.imwrite('debug_images/resized_image.png', image_np)
-    
-    # Apply adaptive thresholding
+
+    return image_np
+
+
+# Bounding box finding image with Connected Component Analysis (CCA)
+def find_bb_contour(image_np, min_ratio=0.001, max_ratio=0.9):
     binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
     
     # Save the binary image
@@ -66,10 +67,29 @@ def process_and_segment_image(image_data, target_size=200, min_ratio=0.001, max_
     bounding_boxes = sort_bounding_boxes(bounding_boxes)
 
     #visualize_preprocessed_image(image, bounding_boxes=bounding_boxes)
+    return bounding_boxes
 
-    return image_np, bounding_boxes
 
-# %%
+# Bounding box finding image with Connected Component Analysis (CCA)
+def find_bb_cca(image_np, min_ratio=0.001, max_ratio=0.9):
+    
+    # Apply adaptive thresholding
+    binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    
+    # Perform connected component analysis
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    
+    # Filter components
+    image_area = image_np.shape[0] * image_np.shape[1]
+    bounding_boxes = []
+    for i in range(1, num_labels):  # Skip the background label
+        x, y, w, h, area = stats[i]
+        if min_ratio * image_area < area < max_ratio * image_area:
+            bounding_boxes.append((x, y, w, h))
+    bounding_boxes = sort_bounding_boxes(bounding_boxes)
+    return bounding_boxes
+
+
 def pad_and_resize_element(element, target_size=(64, 64)): # pad element to square
     h, w = element.shape[:2]
     size = max(h, w)
@@ -81,7 +101,7 @@ def pad_and_resize_element(element, target_size=(64, 64)): # pad element to squa
     resized = cv2.resize(padded, target_size, interpolation=cv2.INTER_AREA)
     return resized
 
-# %%
+
 def preprocess_element(image, bbox, target_size=(64, 64)):
     x, y, w, h = bbox
     element = image[y:y+h, x:x+w]

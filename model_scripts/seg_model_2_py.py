@@ -33,47 +33,37 @@ def process_and_segment_image(image_data, target_size=200, min_ratio=0.001, max_
         image = bg.convert('RGB')
     
     # Save the white background image for inspection
-    image.save('debug_images/white_background_image.png')
+    # image.save('debug_images/white_background_image.png')
     
     # Convert to numpy array
     image_np = np.array(image)
     
     # Convert to grayscale
     image_np = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-    
-    # Save the grayscale image
-    cv2.imwrite('debug_images/grayscale_image.png', image_np)
-    
     image_np = cv2.bitwise_not(image_np)
-    
-    # Save the inverted image
-    cv2.imwrite('debug_images/inverted_image.png', image_np)
     
     # Resize to target size while maintaining aspect ratio
     image_np = cv2.resize(image_np, (target_size, target_size), interpolation=cv2.INTER_AREA)
     
     # Save the resized image
-    cv2.imwrite('debug_images/resized_image.png', image_np)
+    # cv2.imwrite('debug_images/resized_image.png', image_np)
     
     # Apply adaptive thresholding
     binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
     
     # Save the binary image
-    cv2.imwrite('debug_images/binary_image.png', binary)
+    #cv2.imwrite('debug_images/binary_image.png', binary)
     
     # Find contours and get bounding boxes
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    logging.info(f"Number of contours found: {len(contours)}")
     bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
     
     # Filter bounding boxes
     image_area = image_np.shape[0] * image_np.shape[1]
     bounding_boxes = [box for box in bounding_boxes if 
                       min_ratio * image_area < box[2] * box[3] < max_ratio * image_area]
-    
-    logging.info(f"Number of contours found: {len(contours)}")
-    logging.info(f"Number of bounding boxes after filtering: {len(bounding_boxes)}")
+    bounding_boxes = sort_bounding_boxes(bounding_boxes)
 
     #visualize_preprocessed_image(image, bounding_boxes=bounding_boxes)
 
@@ -153,7 +143,7 @@ def sort_bounding_boxes(bounding_boxes, x_threshold=20):
         x, y, w, h = box
         return x  # Sort primarily by x-coordinate
 
-    sorted_boxes = sorted(bounding_boxes, key=sort_key)
+    return sorted(bounding_boxes, key=sort_key)
 
 
 def predictions_to_string(predictions, symbols):
@@ -178,7 +168,8 @@ def parse_expression(expression_string):
         .replace('div', '/')
         .replace('add', '+')
         .replace('sub', '-')
-        .replace('eq', '='))
+        .replace('eq', '=')
+        .replace('dec', '.'))
     
     # Handle implicit multiplication (e.g., '2x' -> '2*x')
     expression_string = re.sub(r'(\d)([xyz])', r'\1*\2', expression_string)
@@ -208,4 +199,3 @@ def evaluate_expression(parsed_expression):
 
 if __name__ == "__main__":
     print("no CLI running support right now")
-    print('hello')

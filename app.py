@@ -32,9 +32,9 @@ def evaluate():
         
         # Process the image
         processed_image, bounding_boxes = process_and_segment_image(image_data)
-        app.logger.info(f"Processed image shape: {processed_image.shape}")
-        app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
-        app.logger.info(f"Bounding boxes: {bounding_boxes}")
+        #app.logger.info(f"Processed image shape: {processed_image.shape}")
+        #app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
+        #app.logger.info(f"Bounding boxes: {bounding_boxes}")
         
         # Make predictions
         predictions = predict_elements(processed_image, bounding_boxes, model)
@@ -42,7 +42,7 @@ def evaluate():
         
         # Convert predictions to a string representation
         expression_string = predictions_to_string(predictions, symbols_list)
-        app.logger.info(f"Expression string: {expression_string}")
+        #app.logger.info(f"Expression string: {expression_string}")
 
         # Parse and evaluate the expression
         parsed_expression = parse_expression(expression_string)
@@ -52,7 +52,7 @@ def evaluate():
         
         # Return the results
         return jsonify({
-            'expression': expression_string,
+            'expression': parsed_expression,
             'result': str(result)
         })
     except Exception as e:

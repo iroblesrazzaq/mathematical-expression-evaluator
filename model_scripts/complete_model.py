@@ -20,6 +20,9 @@ import logging
 
 def process_image(image_data, target_width=400):
     # Decode the base64 image
+    debug_dir = 'debug_images'
+    os.makedirs(debug_dir, exist_ok=True)
+
     image_data = image_data.split(',')[1]  # Remove the "data:image/png;base64," part
     image = Image.open(io.BytesIO(base64.b64decode(image_data)))
     
@@ -43,22 +46,19 @@ def process_image(image_data, target_width=400):
     # Resize to target size while maintaining aspect ratio
     target_height = target_width // 2
     image_np = cv2.resize(image_np, (target_width, target_height), interpolation=cv2.INTER_AREA)
-    # Save the resized image
-    # cv2.imwrite('debug_images/resized_image.png', image_np)
+    cv2.imwrite('debug_images/resized_image.png', image_np)
 
     return image_np
 
 
 # Bounding box finding image with Connected Component Analysis (CCA)
-def find_bb_contour(image_np, min_ratio=0.005, max_ratio=0.25):
+def find_bb_contour(image_np, min_ratio=0.0005, max_ratio=0.25, merge_distance=10):
     binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
     
-    # Find contours and get bounding boxes
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     bounding_boxes = [cv2.boundingRect(contour) for contour in contours]
     
-    # Filter bounding boxes
     image_area = image_np.shape[0] * image_np.shape[1]
     filtered_boxes = []
     for box in bounding_boxes:
@@ -66,18 +66,79 @@ def find_bb_contour(image_np, min_ratio=0.005, max_ratio=0.25):
         box_area = w * h
         aspect_ratio = w / h if h != 0 else 0
         
-        # Filter based on area and aspect ratio
         if (min_ratio * image_area < box_area < max_ratio * image_area and
-            0.25 < aspect_ratio < 4):  # Allow aspect ratios between 1:4 and 4:1
+            0.1 < aspect_ratio < 10):  # Relaxed aspect ratio constraints
             filtered_boxes.append(box)
     
-    filtered_boxes = sort_bounding_boxes(filtered_boxes)
-    return filtered_boxes
+    # Merge nearby small components
+    merged_boxes = merge_nearby_boxes(filtered_boxes, merge_distance)
+    
+    # Sort the merged boxes
+    sorted_boxes = sort_bounding_boxes(merged_boxes)
+    
+    return sorted_boxes
+
+def merge_nearby_boxes(boxes, distance):
+    merged = []
+    while boxes:
+        base = boxes.pop(0)
+        base_x, base_y, base_w, base_h = base
+        
+        to_merge = [base]
+        i = 0
+        while i < len(boxes):
+            x, y, w, h = boxes[i]
+            if (abs(x - base_x) < distance and abs(y - base_y) < distance) or \
+               (abs(x + w - (base_x + base_w)) < distance and abs(y - base_y) < distance):
+                to_merge.append(boxes.pop(i))
+            else:
+                i += 1
+        
+        if len(to_merge) > 1:
+            x = min(box[0] for box in to_merge)
+            y = min(box[1] for box in to_merge)
+            max_x = max(box[0] + box[2] for box in to_merge)
+            max_y = max(box[1] + box[3] for box in to_merge)
+            merged.append((x, y, max_x - x, max_y - y))
+        else:
+            merged.append(base)
+    
+    return merged
+
+
+def classify_symbol(image, box, padding=2):
+    x, y, w, h = box
+    symbol = image[y-padding:y+h+padding, x-padding:x+w+padding]
+    
+    if symbol.size == 0 or w == 0 or h == 0:
+        return None
+
+    aspect_ratio = w / h
+    pixel_density = np.sum(symbol > 0) / (w * h)
+
+    edges = cv2.Canny(symbol, 50, 150)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=20, minLineLength=w*0.5, maxLineGap=5)
+    
+    horizontal_lines = 0
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            if abs(y2 - y1) < h * 0.2:
+                horizontal_lines += 1
+
+    if horizontal_lines >= 2 and aspect_ratio > 1.5:
+        return "eq"
+    elif horizontal_lines == 1 and 0.8 < aspect_ratio < 1.5 and pixel_density < 0.3:
+        return "sub"
+    else:
+        return None
+
 
 
 # Bounding box finding image with Connected Component Analysis (CCA)
 def find_bb_cca(image_np, min_ratio=0.001, max_ratio=0.9):
-    
+    debug_dir = 'debug_images'
+
     # Apply adaptive thresholding
     binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
     
@@ -91,8 +152,16 @@ def find_bb_cca(image_np, min_ratio=0.001, max_ratio=0.9):
         x, y, w, h, area = stats[i]
         if min_ratio * image_area < area < max_ratio * image_area:
             bounding_boxes.append((x, y, w, h))
-    bounding_boxes = sort_bounding_boxes(bounding_boxes)
-    return bounding_boxes
+    filtered_boxes = sort_bounding_boxes(bounding_boxes)
+
+    image_with_boxes = cv2.cvtColor(image_np, cv2.COLOR_GRAY2BGR)
+    for box in filtered_boxes:
+        x, y, w, h = box
+        cv2.rectangle(image_with_boxes, (x, y), (x+w, y+h), (0, 255, 0), 2)
+    cv2.imwrite(os.path.join(debug_dir, '7_image_with_contour_boxes.png'), image_with_boxes)
+
+
+    return filtered_boxes
 
 
 def pad_and_resize_element(element, target_size=(64, 64)): # pad element to square
@@ -201,7 +270,12 @@ def parse_expression(expression_string):
     
     return expression_string
 
-from sympy import symbols, parse_expr, sympify
+def post_process_expression(expression):
+    # Replace consecutive subtraction signs with equals sign
+    expression = expression.replace("--", "=")
+    return expression
+
+
 
 def evaluate_expression(parsed_expression):
     try:

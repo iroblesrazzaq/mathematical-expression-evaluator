@@ -18,7 +18,7 @@ import base64
 import io
 import logging
 
-def process_image(image_data, target_size=200):
+def process_image(image_data, target_width=400):
     # Decode the base64 image
     image_data = image_data.split(',')[1]  # Remove the "data:image/png;base64," part
     image = Image.open(io.BytesIO(base64.b64decode(image_data)))
@@ -41,7 +41,8 @@ def process_image(image_data, target_size=200):
     image_np = cv2.bitwise_not(image_np)
     
     # Resize to target size while maintaining aspect ratio
-    image_np = cv2.resize(image_np, (target_size, target_size), interpolation=cv2.INTER_AREA)
+    target_height = target_width // 2
+    image_np = cv2.resize(image_np, (target_width, target_height), interpolation=cv2.INTER_AREA)
     # Save the resized image
     # cv2.imwrite('debug_images/resized_image.png', image_np)
 
@@ -49,11 +50,8 @@ def process_image(image_data, target_size=200):
 
 
 # Bounding box finding image with Connected Component Analysis (CCA)
-def find_bb_contour(image_np, min_ratio=0.001, max_ratio=0.9):
+def find_bb_contour(image_np, min_ratio=0.005, max_ratio=0.25):
     binary = cv2.adaptiveThreshold(image_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-    
-    # Save the binary image
-    #cv2.imwrite('debug_images/binary_image.png', binary)
     
     # Find contours and get bounding boxes
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -62,12 +60,19 @@ def find_bb_contour(image_np, min_ratio=0.001, max_ratio=0.9):
     
     # Filter bounding boxes
     image_area = image_np.shape[0] * image_np.shape[1]
-    bounding_boxes = [box for box in bounding_boxes if 
-                      min_ratio * image_area < box[2] * box[3] < max_ratio * image_area]
-    bounding_boxes = sort_bounding_boxes(bounding_boxes)
-
-    #visualize_preprocessed_image(image, bounding_boxes=bounding_boxes)
-    return bounding_boxes
+    filtered_boxes = []
+    for box in bounding_boxes:
+        x, y, w, h = box
+        box_area = w * h
+        aspect_ratio = w / h if h != 0 else 0
+        
+        # Filter based on area and aspect ratio
+        if (min_ratio * image_area < box_area < max_ratio * image_area and
+            0.25 < aspect_ratio < 4):  # Allow aspect ratios between 1:4 and 4:1
+            filtered_boxes.append(box)
+    
+    filtered_boxes = sort_bounding_boxes(filtered_boxes)
+    return filtered_boxes
 
 
 # Bounding box finding image with Connected Component Analysis (CCA)
@@ -196,6 +201,8 @@ def parse_expression(expression_string):
     
     return expression_string
 
+from sympy import symbols, parse_expr, sympify
+
 def evaluate_expression(parsed_expression):
     try:
         if not parsed_expression.strip():  # Check if the expression is empty or just whitespace
@@ -211,8 +218,16 @@ def evaluate_expression(parsed_expression):
         if expr.free_symbols:
             return str(expr)
         
-        # Otherwise, evaluate it
-        return expr.evalf()
+        # Evaluate the expression
+        result = expr.evalf()
+        
+        # Convert to int if it's a whole number
+        if result.is_integer:
+            return int(result)
+        
+        # Otherwise, round to 4 decimal places
+        return round(float(result), 4)
+    
     except Exception as e:
         return f"Error evaluating expression: {str(e)}"
 

@@ -36,11 +36,11 @@ def evaluate():
 
         # find bounding boxes
         bounding_boxes = find_bb_contour(processed_img_np) # contour analysis
-        bounding_boxes = find_bb_cca(processed_img_np) # connected component analysis
+        #bounding_boxes = find_bb_cca(processed_img_np) # connected component analysis
 
-        #app.logger.info(f"Processed image shape: {processed_image.shape}")
-        #app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
-        #app.logger.info(f"Bounding boxes: {bounding_boxes}")
+        app.logger.info(f"Processed image shape: {processed_img_np.shape}")
+        app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
+        app.logger.info(f"Bounding boxes: {bounding_boxes}")
         
         # Make predictions
         predictions = predict_elements(processed_img_np, bounding_boxes, model)
@@ -48,7 +48,7 @@ def evaluate():
         
         # Convert predictions to a string representation
         expression_string = predictions_to_string(predictions, symbols_list)
-        #app.logger.info(f"Expression string: {expression_string}")
+        app.logger.info(f"Expression string: {expression_string}")
 
         # Parse and evaluate the expression
         parsed_expression = parse_expression(expression_string)

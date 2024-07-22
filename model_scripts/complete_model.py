@@ -13,7 +13,7 @@ import os
 import random
 import re
 import math
-from sympy import symbols, parse_expr 
+from sympy import symbols, parse_expr, solve, Eq
 import base64
 import io
 import logging
@@ -307,32 +307,59 @@ def post_process_expression(expression):
 
 def evaluate_expression(parsed_expression):
     try:
-        if not parsed_expression.strip():  # Check if the expression is empty or just whitespace
-            return "Empty expression"
-        
-        # Define x, y, z as variables
+        # Define x, y, z as symbols
         x, y, z = symbols('x y z')
         
-        # Parse the expression
-        expr = parse_expr(parsed_expression)
+        # Check if the expression contains an equals sign
+        if '=' in parsed_expression:
+            # Split the equation into left and right sides
+            left, right = parsed_expression.split('=')
+            
+            # Parse both sides of the equation
+            left_expr = parse_expr(left.strip())
+            right_expr = parse_expr(right.strip())
+            
+            # Create an equation
+            equation = Eq(left_expr, right_expr)
+            
+            # Check for variables in the equation
+            variables = equation.free_symbols
+            
+            if len(variables) == 0:
+                # If no variables, evaluate both sides
+                left_value = left_expr.evalf()
+                right_value = right_expr.evalf()
+                return f"{left_value} = {right_value} ({left_value == right_value})"
+            
+            elif len(variables) == 1:
+                # If one variable, solve for it
+                variable = list(variables)[0]
+                solution = solve(equation, variable)
+                
+                if len(solution) == 0:
+                    return "No solution found"
+                elif len(solution) == 1:
+                    return f"{variable} = {solution[0]}"
+                else:
+                    return f"{variable} = {', '.join(map(str, solution))}"
+            
+            else:
+                # If multiple variables, we can't solve it yet
+                return "Cannot solve equations with multiple variables"
         
-        # If the expression contains variables, return it as a string
-        if expr.free_symbols:
-            return str(expr)
-        
-        # Evaluate the expression
-        result = expr.evalf()
-        
-        # Convert to int if it's a whole number
-        if result.is_integer:
-            return int(result)
-        
-        # Otherwise, round to 4 decimal places
-        return round(float(result), 4)
+        else:
+            # If no equals sign, evaluate as before
+            expr = parse_expr(parsed_expression)
+            
+            # If the expression contains variables, return it as a string
+            if expr.free_symbols:
+                return str(expr)
+            
+            # Otherwise, evaluate it
+            return expr.evalf()
     
     except Exception as e:
         return f"Error evaluating expression: {str(e)}"
-
-
+    
 if __name__ == "__main__":
     print("no CLI running support right now")

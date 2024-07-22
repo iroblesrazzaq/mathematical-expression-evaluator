@@ -3,51 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Expression Recognizer</title>
+    <title>Math Expression Evaluator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+        .modal-backdrop {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
-        .sketchpad-container {
-            width: 60%;
-            max-width: 800px;
-            margin: 20px 0;
-        }
-        canvas {
-            width: 100%;
-            height: auto;
-            border: 2px solid black;
-            border-radius: 10px;
-        }
-        button {
-            margin: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        #result {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 20px;
+        .modal-content {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
-<body>
-    <h1>Math Expression Recognizer</h1>
-    <div class="sketchpad-container">
-        <canvas id="sketchpad"></canvas>
-        <br>
-        <button id="evaluateBtn">Evaluate</button>
-        <button id="clearBtn">Clear</button>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-3xl">
+        <h1 class="text-3xl font-bold text-center mb-6">Math Expression Evaluator</h1>
+        <div class="mb-6">
+            <canvas id="sketchpad" class="w-full border-2 border-gray-300 rounded-lg"></canvas>
+        </div>
+        <div class="flex justify-center space-x-4 mb-6">
+            <button id="evaluateBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Evaluate</button>
+            <button id="clearBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Clear</button>
+            <button id="showPreprocessingBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Show Preprocessing</button>
+        </div>
+        <div id="result" class="text-xl font-semibold text-center"></div>
     </div>
-    <p id="result"></p>
-
+    <div id="preprocessingModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center p-4">
+        <div class="modal-content p-8 max-w-3xl w-full">
+            <h2 class="text-2xl font-bold mb-4">Preprocessing Steps</h2>
+            <div id="preprocessingContent"></div>
+            <button id="closeModalBtn" class="mt-4 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Close</button>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

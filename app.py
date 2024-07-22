@@ -2,8 +2,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
 from model_scripts.complete_model import process_image, find_bb_cca, \
-find_bb_contour, predict_elements, load_model, predictions_to_string, \
-parse_expression, evaluate_expression, classify_symbol, post_process_expression
+find_bb_contour, predict_elements, load_model, predictions_to_string, parse_expression, evaluate_expression
+import base64
+import cv2
+import numpy as np
+from io import BytesIO
+from PIL import Image
 
 app = Flask(__name__)
 CORS(app, resources={r"/evaluate": {"origins": "http://127.0.0.1:5500"}}, allow_headers=["Content-Type"], supports_credentials=True)
@@ -12,6 +16,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 model = load_model()  # Load your model here
 symbols_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'add', 'dec', 'div', 'eq', 'mul', 'sub', 'x', 'y', 'z']
+
+def img_to_base64(img):
+    img_pil = Image.fromarray(img)
+    buffered = BytesIO()
+    img_pil.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
 
 @app.route('/evaluate', methods=['POST', 'OPTIONS'])
 def evaluate():
@@ -36,49 +46,54 @@ def evaluate():
         processed_img_np = process_image(image_data)
 
         # find bounding boxes
-        # Find bounding boxes using the improved contour method
-        bounding_boxes = find_bb_contour(processed_img_np)
-        # bounding_boxes = find_bb_cca(processed_img_np)
+        bounding_boxes = find_bb_contour(processed_img_np) # contour analysis
 
         app.logger.info(f"Processed image shape: {processed_img_np.shape}")
         app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
         app.logger.info(f"Bounding boxes: {bounding_boxes}")
         
-        # Classify symbols based on bounding box characteristics
-        symbol_classifications = [classify_symbol(processed_img_np, box) for box in bounding_boxes]
-        app.logger.info(f"Symbol classifications: {symbol_classifications}")
-
-        # Make predictions using the model
+        # Make predictions
         predictions = predict_elements(processed_img_np, bounding_boxes, model)
-        app.logger.info(f"Model predictions: {predictions}")
-        
-        # Combine model predictions with symbol classifications
-        combined_predictions = []
-        for (pred_class, confidence), symbol_class, box in zip(predictions, symbol_classifications, bounding_boxes):
-            if symbol_class in ['eq', 'sub'] and confidence < 0.9:
-                app.logger.info(f"Overriding model prediction {symbols_list[pred_class]} ({confidence:.2f}) with {symbol_class} for box {box}")
-                combined_predictions.append((symbols_list.index(symbol_class), 0.9))
-            else:
-                combined_predictions.append((pred_class, confidence))
+        app.logger.info(f"Predictions: {predictions}")
         
         # Convert predictions to a string representation
-        expression_string = predictions_to_string(combined_predictions, symbols_list)
-        app.logger.info(f"Initial expression string: {expression_string}")
+        expression_string = predictions_to_string(predictions, symbols_list)
+        app.logger.info(f"Expression string: {expression_string}")
 
-        # Post-process the expression
-        processed_expression = post_process_expression(expression_string)
-        app.logger.info(f"Processed expression string: {processed_expression}")
-
-        # Parse and evaluate the processed expression
-        parsed_expression = parse_expression(processed_expression)
+        # Parse and evaluate the expression
+        parsed_expression = parse_expression(expression_string)
         app.logger.info(f"Parsed expression: {parsed_expression}")
         result = evaluate_expression(parsed_expression)
         app.logger.info(f"Evaluation result: {result}")
         
+        # Draw bounding boxes on the processed image
+        processed_img_with_boxes = processed_img_np.copy()
+        for bbox in bounding_boxes:
+            x, y, w, h = bbox
+            cv2.rectangle(processed_img_with_boxes, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        
+        # Convert the image with bounding boxes to base64
+        processed_img_base64 = img_to_base64(processed_img_with_boxes)
+
+        preprocessing_data = {
+            'processed_image': f"data:image/png;base64,{processed_img_base64}",
+            'predictions': []
+        }
+        
+        for (bbox, (pred_class, confidence)) in zip(bounding_boxes, predictions):
+            x, y, w, h = bbox
+            element = processed_img_np[y:y+h, x:x+w]
+            preprocessing_data['predictions'].append({
+                'image': f"data:image/png;base64,{img_to_base64(element)}",
+                'symbol': symbols_list[pred_class],
+                'confidence': confidence
+            })
+        
         # Return the results
         return jsonify({
             'expression': parsed_expression,
-            'result': str(result)
+            'result': str(result),
+            'preprocessing': preprocessing_data
         })
     except Exception as e:
         app.logger.error(f"Error in evaluate: {str(e)}", exc_info=True)

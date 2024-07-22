@@ -9,7 +9,8 @@ from PIL import Image
 import os
 from model_scripts.complete_model import (
     process_image, find_bb_contour, predict_elements, load_model,
-    predictions_to_string, parse_expression, evaluate_expression
+    predictions_to_string, parse_expression, evaluate_expression,
+    detect_equals_sign
 )
 
 app = Flask(__name__)
@@ -101,10 +102,18 @@ def evaluate():
         app.logger.info(f"Processed image shape: {processed_img_np.shape}")
         app.logger.info(f"Number of bounding boxes: {len(bounding_boxes)}")
         app.logger.info(f"Bounding boxes: {bounding_boxes}")
+        
+        predictions = predict_elements(processed_img_np, bounding_boxes, model)
         app.logger.info(f"Predictions: {predictions}")
         
-        expression_string = predictions_to_string(predictions, symbols_list)
-        app.logger.info(f"Expression string: {expression_string}")
+        expression_with_bbox = predictions_to_string(predictions, bounding_boxes, symbols_list)
+        app.logger.info(f"Expression with bounding boxes: {expression_with_bbox}")
+
+        expression_with_equals = detect_equals_sign(expression_with_bbox)
+        app.logger.info(f"Expression with equals detection: {expression_with_equals}")
+
+        expression_string = ''.join([symbol for symbol, _ in expression_with_equals])
+        app.logger.info(f"Final expression string: {expression_string}")
 
         parsed_expression = parse_expression(expression_string)
         app.logger.info(f"Parsed expression: {parsed_expression}")
@@ -122,6 +131,6 @@ def evaluate():
     except Exception as e:
         app.logger.error(f"Error in evaluate: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
-
+    
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5000, debug=True)

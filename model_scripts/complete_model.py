@@ -240,20 +240,48 @@ def sort_bounding_boxes(bounding_boxes, x_threshold=20):
     return sorted(bounding_boxes, key=sort_key)
 
 
-def predictions_to_string(predictions, symbols):
-    if not predictions:
-        return ""  # Return an empty string if there are no predictions
-    result = []
-    for pred, _ in predictions:
-        symbol = symbols[pred]
-        if symbol in ['mul', '*', 'x']:  # Handle multiplication symbols
-            result.append('*')
-        elif symbol in ['div', '/']:  # Handle division symbols
-            result.append('/')
-        else:
-            result.append(symbol)
-    return ''.join(result)
 
+def predictions_to_string(predictions, bounding_boxes, symbols):
+    result = []
+    for (pred, _), bbox in zip(predictions, bounding_boxes):
+        symbol = symbols[pred]
+        if symbol in ['mul', '*', 'x']:
+            result.append(('*', bbox))
+        elif symbol in ['div', '/']:
+            result.append(('/', bbox))
+        elif symbol == 'sub':
+            result.append(('-', bbox))
+        else:
+            result.append((symbol, bbox))
+    return result
+
+
+def detect_equals_sign(expression_with_bbox):
+    new_expression = []
+    i = 0
+    while i < len(expression_with_bbox):
+        if i + 1 < len(expression_with_bbox) and expression_with_bbox[i][0] == '-' and expression_with_bbox[i+1][0] == '-':
+            bbox1 = expression_with_bbox[i][1]
+            bbox2 = expression_with_bbox[i+1][1]
+            
+            # Check if the bounding boxes overlap horizontally
+            if (bbox1[0] <= bbox2[0] + bbox2[2] and bbox2[0] <= bbox1[0] + bbox1[2]):
+                # Combine the two subtraction symbols into an equals sign
+                new_bbox = (
+                    min(bbox1[0], bbox2[0]),
+                    min(bbox1[1], bbox2[1]),
+                    max(bbox1[0] + bbox1[2], bbox2[0] + bbox2[2]) - min(bbox1[0], bbox2[0]),
+                    max(bbox1[1] + bbox1[3], bbox2[1] + bbox2[3]) - min(bbox1[1], bbox2[1])
+                )
+                new_expression.append(('=', new_bbox))
+                i += 2
+            else:
+                new_expression.append(expression_with_bbox[i])
+                i += 1
+        else:
+            new_expression.append(expression_with_bbox[i])
+            i += 1
+    return new_expression
 
 def parse_expression(expression_string):
     # Replace 'mul' with '*', 'div' with '/', 'add' with '+', 'sub' with '-'

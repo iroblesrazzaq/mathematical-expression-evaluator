@@ -35,30 +35,44 @@ closeModalBtn.addEventListener('click', closePreprocessingModal);
 
 function getMousePos(canvas, evt) {
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
     return {
-        x: evt.clientX - rect.left,
-        y: evt.clientY - rect.top
+        x: (evt.clientX - rect.left) * scaleX,
+        y: (evt.clientY - rect.top) * scaleY
     };
 }
 
 function startDrawing(e) {
     isDrawing = true;
-    [lastX, lastY] = [e.offsetX, e.offsetY];
+    const pos = getMousePos(canvas, e);
+    [lastX, lastY] = [pos.x, pos.y];
+    // Draw a single point in case of a click without drag
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+    ctx.fill();
 }
 
 function draw(e) {
     if (!isDrawing) return;
+    
+    const pos = getMousePos(canvas, e);
+    const x = pos.x;
+    const y = pos.y;
 
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
-    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.lineTo(x, y);
     ctx.stroke();
 
-    [lastX, lastY] = [e.offsetX, e.offsetY];
+    [lastX, lastY] = [x, y];
 }
 
 function stopDrawing() {
     isDrawing = false;
+    // Reset lastX and lastY to prevent connecting to the last point
+    lastX = 0;
+    lastY = 0;
 }
 
 function clearCanvas() {
@@ -91,7 +105,7 @@ async function evaluateExpression() {
         }
         
         const result = await response.json();
-        resultP.textContent = `Expression: ${result.expression}, Result: ${result.result}`;
+        resultP.innerHTML = `Expression: ${result.expression}<br>Result: ${result.result}`;
         
         // Store the preprocessing data
         window.preprocessingData = result.preprocessing;
@@ -112,21 +126,21 @@ function showPreprocessing() {
     // Display the processed image with bounding boxes
     const processedImg = document.createElement('img');
     processedImg.src = window.preprocessingData.processed_image;
-    processedImg.className = 'w-full mb-4 rounded-lg';
+    processedImg.className = 'preprocessed-image';
     preprocessingContent.appendChild(processedImg);
     
     // Display individual predictions
     const predictionsContainer = document.createElement('div');
-    predictionsContainer.className = 'grid grid-cols-3 gap-4';
+    predictionsContainer.className = 'predictions-grid';
     
     window.preprocessingData.predictions.forEach((prediction) => {
         const predictionElement = document.createElement('div');
-        predictionElement.className = 'flex items-center space-x-4 bg-gray-100 p-2 rounded-lg';
+        predictionElement.className = 'prediction-item';
         predictionElement.innerHTML = `
-            <img src="${prediction.image}" class="w-16 h-16 object-contain bg-white rounded" />
-            <div>
-                <p class="font-semibold">Predicted: ${prediction.symbol}</p>
-                <p>Confidence: ${prediction.confidence.toFixed(2)}</p>
+            <img src="${prediction.image}" class="prediction-image" alt="Predicted symbol" />
+            <div class="prediction-text">
+                <p><strong>Predicted:</strong> ${prediction.symbol}</p>
+                <p><strong>Confidence:</strong> ${prediction.confidence.toFixed(2)}</p>
             </div>
         `;
         predictionsContainer.appendChild(predictionElement);
@@ -134,14 +148,12 @@ function showPreprocessing() {
     
     preprocessingContent.appendChild(predictionsContainer);
     
-    preprocessingModal.classList.remove('hidden');
-    preprocessingModal.classList.add('flex');
+    preprocessingModal.style.display = 'flex';
 }
 
 
 function closePreprocessingModal() {
-    preprocessingModal.classList.add('hidden');
-    preprocessingModal.classList.remove('flex');
+    preprocessingModal.style.display = 'none';
 }
 
 function isCanvasBlank() {

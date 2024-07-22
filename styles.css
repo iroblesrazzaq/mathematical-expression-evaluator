@@ -1,0 +1,156 @@
+body {
+    background-color: #f3f4f6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 2rem;
+    width: 100%;
+    max-width: 48rem;
+}
+
+.title {
+    font-size: 1.875rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+#sketchpad {
+    width: 100%;
+    border: 2px solid #d1d5db;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.button {
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button-blue {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.button-blue:hover {
+    background-color: #2563eb;
+}
+
+.button-red {
+    background-color: #ef4444;
+    color: white;
+}
+
+.button-red:hover {
+    background-color: #dc2626;
+}
+
+.button-green {
+    background-color: #10b981;
+    color: white;
+}
+
+.button-green:hover {
+    background-color: #059669;
+}
+
+#result {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+    max-width: 48rem;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.preprocessed-image {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+}
+
+.predictions-grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+.prediction-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f3f4f6;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    width: 100px;
+}
+
+.prediction-image {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    background-color: white;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.prediction-text {
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.button-gray {
+    background-color: #6b7280;
+    color: white;
+}
+
+.button-gray:hover {
+    background-color: #4b5563;
+}

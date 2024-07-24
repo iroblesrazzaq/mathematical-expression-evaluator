@@ -1,17 +1,15 @@
 # Math Expression Evaluator
 
-An interactive web application that evaluates handwritten mathematical expressions using machine learning and vanilla JavaScript.
-
+An interactive web application that evaluates handwritten mathematical expressions using machine learning.
 ## Description
 
 This project combines a Flask backend with a vanilla JavaScript frontend to create a unique mathematical tool. Users can draw mathematical expressions on a canvas, which are then processed, recognized, and evaluated in real-time. The application uses a custom-trained Convolutional Neural Network (CNN) to recognize handwritten digits and mathematical symbols.
 
 ## Tech Stack
 
-- Frontend: HTML, CSS, Vanilla JavaScript
+- Frontend: HTML, CSS, JavaScript
 - Backend: Python, Flask
 - Machine Learning: PyTorch, OpenCV
-- Additional Libraries: NumPy, Sympy
 
 ## Setup and Installation
 
@@ -48,14 +46,10 @@ This project combines a Flask backend with a vanilla JavaScript frontend to crea
 
 The most challenging aspect of this project was implementing accurate segmentation and recognition of handwritten mathematical symbols. To overcome this, we developed a custom image processing pipeline using OpenCV for segmentation and a CNN trained on a dataset of handwritten mathematical symbols. 
 
-Another significant challenge was creating a smooth drawing experience and integrating the machine learning model with the web interface in real-time. We solved this by optimizing the backend processing and using asynchronous JavaScript to handle the communication between the frontend and backend efficiently, all without relying on any frontend frameworks.
-
 ## Future Improvements
 
 - Expand the range of recognized mathematical symbols and operations
-- Implement user accounts to save and share expressions
 - Add support for more complex mathematical operations and functions
-- Optimize the model for better performance on mobile devices
 - Enhance the drawing experience with advanced canvas features
 
 ## Contributing

@@ -1,14 +1,12 @@
 
 import numpy as np
 import cv2
-import tkinter as tk
 from PIL import Image, ImageTk
 import torch
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
 from backend.cnn_class import CNN
-import matplotlib.pyplot as plt
 import os
 import random
 import re

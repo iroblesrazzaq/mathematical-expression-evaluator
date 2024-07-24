@@ -7,7 +7,7 @@ import torch
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.nn.functional as F
-from model_scripts.cnn_class import CNN
+from backend.cnn_class import CNN
 import matplotlib.pyplot as plt
 import os
 import random

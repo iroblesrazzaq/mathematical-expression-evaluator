@@ -14,7 +14,7 @@ This project combines a Flask backend with a vanilla JavaScript frontend to crea
 ## Setup and Installation
 
 1. Clone the repository:
-    git clone https://github.com/yourusername/math-expression-evaluator.git
+    git clone https://github.com/iroblesrazzaq/math-expression-evaluator.git
     cd math-expression-evaluator
 
 2. Set up a Python virtual environment:
